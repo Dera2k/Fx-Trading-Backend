@@ -55,7 +55,7 @@ export class Transaction {
   @Index()
   createdAt!: Date;
 
-  @ManyToOne(() => User, (u) => u.transactions, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'userId' })
+//   @ManyToOne(() => User, (u) => u.transactions, { onDelete: 'CASCADE' })
+//   @JoinColumn({ name: 'userId' })
   user!: User;
 }

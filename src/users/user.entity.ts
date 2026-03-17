@@ -41,11 +41,11 @@ export class User {
   @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt!: Date;
 
-  @OneToMany(() => Wallet, (w) => w.user)
-  wallets!: Wallet[];
+//   @OneToMany(() => Wallet, (w) => w.user)
+//   wallets!: Wallet[];
 
-  @OneToMany(() => Transaction, (t) => t.user)
-  transactions!: Transaction[];
+//   @OneToMany(() => Transaction, (t) => t.user)
+//   transactions!: Transaction[];
 
   @OneToMany(() => Otp, (o) => o.user)
   otps!: Otp[];
