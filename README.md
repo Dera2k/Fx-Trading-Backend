@@ -1,48 +1,70 @@
 # FX Trading App — Backend
 
-A multi-currency foreign exchange trading API built with NestJS, TypeORM, and PostgreSQL.
-Users register, verify via OTP, and then fund wallets, convert between currencies, and execute FX trades.
+A multi-currency foreign exchange trading API built with NestJS, TypeORM and PostgreSQL.
+
+Users can:
+
+- register and verify with OTP
+- fund wallets
+- convert currencies
+- execute FX trades
 
 ---
 
-## What this is (and what it isn't)
-
-This is a **clean, production-shaped skeleton**. The auth, wallet, FX rates, and transaction history endpoints are wired up. The `convert` and `trade` business logic is scaffolded but not yet implemented — those are the next things to build. See the checklist below.
-
----
-
-## Quick start
+## Quick Start
 
 ```bash
 # 1. Clone and install
-git clone https://github.com/your-org/fx-trading-app.git
-cd fx-trading-app
+git clone https://github.com/Dera2k/Fx-Trading-Backend.git
+cd Fx-Trading-Backend
 npm install
 
 # 2. Create the database
 psql -U postgres -c "CREATE DATABASE fx_trading;"
 
-# 3. Configure environment
+# 3. Set up environment variables
 cp .env.example .env
-# Edit .env — set your DB credentials and a real JWT_SECRET
+# update DB config + JWT_SECRET
 
-# 4. Start dev server
+# 4. Start the server
 npm run start:dev
 ```
 
-API runs at **http://localhost:3000**
-Swagger docs at **http://localhost:3000/api/docs**
+App runs on:  
+http://localhost:3000
+
+Swagger docs:  
+http://localhost:3000/api/docs
 
 ---
 
-## Key assumptions
+## Assumptions
 
-- **One wallet row per currency per user.** There is no single "multi-currency wallet object" — the wallets table has a UNIQUE(userId, currency) constraint. `findOrCreate` is used everywhere so the wallet is lazily created on first use.
-- **USD is the FX base currency.** All cross-rates are derived from USD pairs: `toRate / fromRate`. This means you only need N rates for N currencies instead of N² pairs.
-- **OTP via database (not Redis) during development.** The email service is not yet implemented. To get the OTP during development, run: `SELECT code FROM otps WHERE "isUsed" = false ORDER BY "createdAt" DESC LIMIT 1;`
-- **`synchronize: true` in development.** TypeORM will auto-sync the schema from entities. This is disabled when NODE_ENV=production. You must generate and run migrations before going live.
-- **Balance stored as `decimal(18,4)` string.** TypeORM returns decimal columns as strings to avoid JavaScript float precision issues. Arithmetic in services uses `parseFloat()` for the skeleton — replace with `decimal.js` before production.
-- **JWT is stateless, 7-day expiry.** There is no refresh token or blacklist yet. Forced logout requires adding a token version to the users table.
+- **One wallet per currency per user**  
+  Enforced with a unique constraint. Wallets are created when first needed.
+
+- **USD is the base currency**  
+  All conversions are derived from USD pairs.
+
+- **OTP is stored in the DB (for now)**  
+  You can grab it manually during testing:
+
+```sql
+SELECT code
+FROM otps
+WHERE "isUsed" = false
+ORDER BY "createdAt" DESC
+LIMIT 1;
+```
+
+- **Auto schema sync is on (dev only)**  
+  Turn this off in production and use migrations.
+
+- **Balances use `decimal(18,4)`**  
+  Stored as strings. In production - use proper decimal handling.
+
+- **JWT expires in 7 days**  
+  No refresh token yet.
 
 ---
 
@@ -50,116 +72,190 @@ Swagger docs at **http://localhost:3000/api/docs**
 
 All protected endpoints require `Authorization: Bearer <token>`.
 
-| Method | Path            | Auth   | Description                          |
-| ------ | --------------- | ------ | ------------------------------------ |
-| POST   | /auth/register  | None   | Register user, trigger OTP email     |
-| POST   | /auth/verify    | None   | Verify OTP → returns JWT             |
-| GET    | /wallet         | Bearer | All wallet balances for current user |
-| POST   | /wallet/fund    | Bearer | Top up a currency wallet             |
-| POST   | /wallet/convert | Bearer | Convert between currencies (TODO)    |
-| POST   | /wallet/trade   | Bearer | FX trade at market rate (TODO)       |
-| GET    | /fx/rates       | Bearer | Live FX rates (stub until wired)     |
-| GET    | /transactions   | Bearer | Transaction history, newest first    |
+| Method | Path            | Auth   | Description                                 |
+| ------ | --------------- | ------ | ------------------------------------------- |
+| POST   | /auth/register  | None   | Register user — sends OTP to terminal (dev) |
+| POST   | /auth/verify    | None   | Verify OTP → activates account + JWT        |
+| POST   | /auth/login     | None   | Login with email + password → JWT           |
+| GET    | /wallet         | Bearer | All wallet balances for current user        |
+| POST   | /wallet/fund    | Bearer | Fund a currency wallet                      |
+| POST   | /wallet/convert | Bearer | Convert between currencies at live rate     |
+| POST   | /wallet/trade   | Bearer | Execute FX trade at live market rate        |
+| GET    | /fx/rates       | Bearer | Current FX rates (USD base, 60s cache)      |
+| GET    | /transactions   | Bearer | Transaction history, newest first           |
 
-Full request/response schemas are in Swagger at `/api/docs`.
+Full interactive docs at `http://localhost:3000/api/docs`.
 
 ---
 
-## Architecture decisions
+## How it’s structured
 
-### Module structure
+- Controllers → handle requests
+- Services → contain all logic
+- Entities → map to DB
 
-Standard NestJS layout: module → controller → service → entity. No extra layers. Controllers are thin — they validate the request and call the service. All business logic is in services. This keeps the codebase predictable and easy to navigate.
+---
 
-### Why PostgreSQL, not MongoDB
+## Design choices
 
-Money requires ACID. The UNIQUE constraint on (userId, currency) in the wallets table is enforced at the database level — no application-level race condition can create duplicate wallet rows. Document databases would require careful application-level handling to achieve the same guarantee.
+- **PostgreSQL**  
+  Reliable, supports constraints and transactions - important for wallets.
 
-### No CQRS, no event sourcing
+- **No CQRS / event sourcing (yet)**  
+  Feel its not needed as there is no frontend, but have commented its implementation in main.ts
 
-These patterns were excluded because the complexity cost exceeds the benefit at this scale. The service layer is already the correct seam to introduce a command bus later if needed — no structural changes required.
+- **FX rates**  
+  Currently mocked. Replace `getRates()` in `FxService` with a real provider.
 
-### FX rate design
+---
 
-`FxService.getRate(from, to)` derives cross-rates from USD pairs. Replace the stub `getRates()` with an HTTP call to any provider (Open Exchange Rates, Fixer.io, ExchangeRate-API) — the rest of the system works without changes.
+## Quick Start
+
+```bash
+# 1. Clone and install
+git clone https://github.com/your-org/fx-trading-app.git
+cd fx-trading-app
+pnpm install
+
+# 2. Create the database
+psql -U postgres -c "CREATE DATABASE fx_trading;"
+
+# 3. Configure environment
+cp .env.example .env
+# Edit .env — set DB credentials and JWT_SECRET
+
+# 4. Start dev server
+pnpm run start:dev
+```
+
+API runs at **[http://localhost:3000](http://localhost:3000)**
+Swagger docs at **[http://localhost:3000/api/docs](http://localhost:3000/api/docs)**
+
+---
+
+## Key Assumptions
+
+- **One wallet per currency per user.** Wallets table has `UNIQUE(userId, currency)`. Wallets are created on first use.
+- **USD is the FX base currency.** Cross-rates are derived from USD pairs.
+- **OTP stored in database** during development. To retrieve an OTP:
+
+```sql
+SELECT code FROM otps WHERE "isUsed" = false ORDER BY "createdAt" DESC LIMIT 1;
+```
+
+- **Schema auto-sync in development.** Disabled in production; use migrations instead.
+- **Balance stored as `decimal(18,4)` string.** Use proper decimal handling in production.
+- **JWT tokens** expire in 7 days. No refresh token implemented yet.
+
+---
+
+## API reference
+
+All protected endpoints require `Authorization: Bearer <token>`.
+
+| Method | Path            | Auth   | Description                                 |
+| ------ | --------------- | ------ | ------------------------------------------- |
+| POST   | /auth/register  | None   | Register user — sends OTP to terminal (dev) |
+| POST   | /auth/verify    | None   | Verify OTP → activates account + JWT        |
+| POST   | /auth/login     | None   | Login with email + password → JWT           |
+| GET    | /wallet         | Bearer | All wallet balances for current user        |
+| POST   | /wallet/fund    | Bearer | Fund a currency wallet                      |
+| POST   | /wallet/convert | Bearer | Convert between currencies at live rate     |
+| POST   | /wallet/trade   | Bearer | Execute FX trade at live market rate        |
+| GET    | /fx/rates       | Bearer | Current FX rates (USD base, 60s cache)      |
+| GET    | /transactions   | Bearer | Transaction history, newest first           |
+
+Full interactive docs at `http://localhost:3000/api/docs`.
+
+---
+
+## Architecture Decisions
+
+- **Module structure:** Standard NestJS layout - module → controller → service → entity. Controllers are thin; all business logic is in services.
+- **PostgreSQL:** ACID guarantees, UNIQUE constraints, and transaction safety for wallet operations.
+- **No CQRS/event sourcing:** Complexity not justified at this scale. Future improvements can introduce.
+- **FX rates:** Derived from USD pairs. Replace the stub `getRates()` in `FxService` with a real API call.
 
 ---
 
 ## Testing with Postman
 
-1. **Create a Collection** with a variable `token` (empty initial value)
-2. Set Collection-level Authorization to `Bearer {{token}}`
-3. Run requests in this order:
+### One-time setup
 
+1. Create a new Collection named `FX Trading App`
+2. Inside the Collection, go to **Variables** → add variable `token` with empty value
+3. Go to **Authorization** tab → Type: `Bearer Token` → Token: `{{token}}`
+
+Every request inside the collection inherits this automatically.
+
+### Request sequence
+
+**1. Register**
+`POST /auth/register` — no auth
+
+```json
+{ "email": "trader@example.com", "password": "Str0ngP@ss!" }
 ```
-POST /auth/register      { email, password }
-# Then: SELECT code FROM otps WHERE "isUsed" = false ORDER BY "createdAt" DESC LIMIT 1;
-POST /auth/verify        { email, code }
-# Add test script: pm.collectionVariables.set("token", pm.response.json().accessToken)
-GET  /fx/rates
-POST /wallet/fund        { "currency": "USD", "amount": 1000 }
-GET  /wallet
-GET  /transactions
+
+The OTP prints to your terminal: `[DEV ONLY] OTP for trader@example.com: 482910`
+
+**2. Verify OTP**
+`POST /auth/verify` — no auth
+
+```json
+{ "email": "trader@example.com", "code": "482910" }
 ```
 
----
+In the **Tests** tab of this request, paste:
 
-## Completion checklist
-
-### Must do next
-
-- [ ] **Email service** — plug in any SMTP provider in `AuthService.issueOtp()`. Add `MailModule`.
-- [ ] **Implement `wallet/convert`** — fetch rate from FxService, debit/credit atomically in a QueryRunner transaction, record transaction.
-- [ ] **Implement `wallet/trade`** — same pattern as convert, type = TRADE.
-- [ ] **Record transaction on fund** — call `transactionsService.record()` at the end of `WalletService.fund()`.
-- [ ] **Login endpoint** — `POST /auth/login` with email + password → JWT. Users cannot log back in after token expiry right now.
-
-### Production hardening
-
-- [ ] **TypeORM migrations** — set `synchronize: false`, generate initial migration, commit it.
-- [ ] **Live FX rates** — replace stub in `FxService.getRates()` with HTTP call + 60s TTL cache.
-- [ ] **Rate limiting** — `@nestjs/throttler` on auth routes (5 req/min minimum).
-- [ ] **Helmet** — `app.use(helmet())` in main.ts.
-- [ ] **CORS** — configure `app.enableCors()` with your frontend origin, not `*`.
-- [ ] **Config module** — replace raw `process.env` with `@nestjs/config` + Joi validation.
-- [ ] **Consistent error shape** — `HttpExceptionFilter` returning `{ statusCode, message, timestamp, path }`.
-- [ ] **Logging** — replace any `console.log` with NestJS `Logger`. Log every money movement.
-- [ ] **Refresh tokens** — short-lived access tokens (15 min) + refresh tokens (30 days).
-
-### Testing
-
-- [ ] Unit tests for AuthService (conflict, OTP expiry, successful verify)
-- [ ] Unit tests for WalletService (fund, insufficient balance)
-- [ ] Unit tests for FxService (cross-rate derivation)
-- [ ] E2E test for full auth → fund → get wallets flow
-
-### Deployment
-
-- [ ] Dockerfile + docker-compose (app + postgres)
-- [ ] `GET /health` endpoint
-- [ ] Secrets manager for JWT_SECRET and DB credentials
-- [ ] TLS via reverse proxy (nginx or cloud load balancer)
-
----
-
-## Environment variables
-
-| Variable   | Default                 | Notes                                          |
-| ---------- | ----------------------- | ---------------------------------------------- |
-| DB_HOST    | localhost               |                                                |
-| DB_PORT    | 5432                    |                                                |
-| DB_USER    | postgres                |                                                |
-| DB_PASS    | postgres                | **Change this**                                |
-| DB_NAME    | fx_trading              |                                                |
-| JWT_SECRET | change-me-in-production | Use 64+ random chars in any shared environment |
-| NODE_ENV   | development             | `production` disables schema sync              |
-| PORT       | 3000                    |                                                |
-
----
-
-## Project structure
-
+```javascript
+pm.collectionVariables.set('token', pm.response.json().accessToken);
 ```
+
+All subsequent requests now send your JWT automatically.
+
+**3. Login** (use this after your token expires instead of re-verifying)
+`POST /auth/login` — no auth
+
+```json
+{ "email": "trader@example.com", "password": "Str0ngP@ss!" }
+```
+
+Same test script as verify to refresh the token.
+
+**4. Get FX rates**
+`GET /fx/rates` — inherited Bearer token, no body
+
+**5. Fund NGN wallet**
+`POST /wallet/fund` — inherited Bearer token
+
+```json
+{ "currency": "NGN", "amount": 50000 }
+```
+
+**6. Convert NGN to USD**
+`POST /wallet/convert` — inherited Bearer token
+
+```json
+{ "fromCurrency": "NGN", "toCurrency": "USD", "amount": 1000 }
+```
+
+**7. Trade NGN to GBP**
+`POST /wallet/trade` — inherited Bearer token
+
+```json
+{ "fromCurrency": "NGN", "toCurrency": "GBP", "amount": 5000 }
+```
+
+**8. View all wallets**
+`GET /wallet` — inherited Bearer token, no body
+
+**9. View transaction history**
+`GET /transactions` — inherited Bearer token, no body
+
+## Project Structure
+
+```text
 src/
   auth/          ← registration, OTP, JWT strategy
   users/         ← user entity + lookup service
@@ -171,4 +267,46 @@ src/
     decorators/  ← @CurrentUser()
   main.ts
   app.module.ts
+```
+
+---
+
+## Optional Testing
+
+- Unit tests for critical services (AuthService, WalletService, FxService)
+- E2E test for full auth → fund → get wallets flow
+
+```bash
+# Run tests
+pnpm run test
+```
+
+## Project Structure
+
+```text
+src/
+  auth/          # auth, OTP, JWT
+  users/         # user entity + service
+  wallet/        # wallet logic
+  transactions/  # transaction history
+  fx/            # exchange rates
+  common/
+    enums/
+    decorators/
+  main.ts
+  app.module.ts
+```
+
+---
+
+## Testing
+
+Focus on:
+
+- AuthService
+- WalletService
+- FxService
+
+```bash
+npm run test
 ```
