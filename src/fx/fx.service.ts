@@ -3,6 +3,8 @@ import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { Currency } from '../common/enums/currency.enum';
 
+import { ConfigService } from '@nestjs/config';
+
 const CACHE_TTL_MS = 60_000; //60 seconds
 
 @Injectable()
@@ -10,7 +12,9 @@ export class FxService {
   private readonly logger = new Logger(FxService.name);
   private cache: { rates: Record<string, number>; fetchedAt: number } | null = null;
 
-  constructor(private readonly httpService: HttpService) {}
+  constructor(
+    private readonly httpService: HttpService,
+  private readonly configService: ConfigService,) {}
 
   async getRates(): Promise<{ base: Currency; rates: Record<string, number>; fetchedAt: string }> {
     if (this.cache && Date.now() - this.cache.fetchedAt < CACHE_TTL_MS) {
@@ -21,14 +25,14 @@ export class FxService {
       };
     }
 
-    const apiKey = process.env.FX_API_KEY;
-    console.log('FX_API_KEY value:', apiKey);  //to debug 
+    const apiKey = this.configService.get<string>('FX_API_KEY');
+
     if (!apiKey) {
       throw new InternalServerErrorException('FX Api key is not configured');
     }
 
     try {
-      const baseUrl = process.env.FX_API_URL ?? 'https://v6.exchangerate-api.com/v6';
+      const baseUrl = process.env.FX_API_URL ?? 'https://v6.exchangerate-api.com/v6/58b2472e340d6400a9544953/latest/USD';
       const url = `${baseUrl}/${apiKey}/latest/USD`;
 
       const response = await firstValueFrom(this.httpService.get(url));
