@@ -39,7 +39,7 @@ export class Wallet {
   @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt!: Date;
 
-  // @ManyToOne(() => User, (u) => u.wallets, { onDelete: 'CASCADE' })
-  // @JoinColumn({ name: 'userId' })
+  @ManyToOne(() => User, (u) => u.wallets, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'userId' })
   user!: User;
 }
