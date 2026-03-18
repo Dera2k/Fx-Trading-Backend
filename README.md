@@ -11,6 +11,20 @@ Users can:
 
 ---
 
+## Before you test this API
+
+A quick note on how OTP delivery works in this version.
+
+When you register, a 6-digit OTP is generated and saved to the database. Right now it prints directly to the server terminal instead of going to your email. This is intentional for this stage — wiring up a transactional email provider introduces external dependencies (API keys, domain verification, rate limits) that I did not want to make a hard requirement just to get the app running and tested. The infrastructure for it is already shaped in the codebase and will be the first thing I add in the next iteration.
+
+What this means practically: to get your OTP, you need access to the terminal where the server is running. If you are testing this yourself locally that is no issue at all — you will see it printed there. If you are accessing this remotely, you will need me to relay the code to you, or I can share my screen while you go through the flow.
+
+The server also needs to be running for any API call to work. I cannot guarantee uptime on a persistent basis right now since this is running locally, not on a hosted environment. Scaling provisions for a proper deployment have been thought through and are documented in the architecture section — that is the next step after this version is solid.
+
+If any of this is unclear or you hit an issue getting through the auth flow, refer to the **Testing with Postman** section of this README — it walks through every request in order with the exact bodies to send.
+
+---
+
 ## Quick Start
 
 ```bash
