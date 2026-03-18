@@ -203,7 +203,9 @@ The OTP prints to your terminal: `[DEV ONLY] OTP for trader@example.com: 482910`
 `POST /auth/verify` — no auth
 
 ```json
-{ "email": "trader@example.com", "code": "482910" }
+{ "email": "trader@example.com", "code": "482910", }
+
+code can be seen in the run terminal, no email integration as of now
 ```
 
 In the **Tests** tab of this request, paste:
@@ -301,12 +303,59 @@ src/
 
 ## Testing
 
-Focus on:
+This project includes unit tests for the core services: `WalletService`, `FxService` and `TransactionsService`
 
-- AuthService
-- WalletService
-- FxService
+Tests are written with Jest and mock all external dependencies (database and FX API) so no setup is required to run them.
+
+---
+
+### Run all tests
 
 ```bash
-npm run test
+pnpm test
+```
+
+### Run with coverage
+
+```bash
+pnpm test --coverage
+```
+
+### Run a specific service
+
+```bash
+pnpm test wallet.service
+pnpm test fx.service
+pnpm test transactions.service
+```
+
+### Watch mode (dev mode)
+
+```bash
+pnpm test --watch
+```
+
+---
+
+### What’s covered
+
+| File                           | What it checks                                                                                                                                                                                                      |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `wallet.service.spec.ts`       | Funding updates balance, creates a wallet if one doesn’t exist, records a FUND transaction, throws 400 for insufficient balance, conversion records a CONVERT transaction, trade fails if rate is below the limit   |
+| `fx.service.spec.ts`           | Fetches live rates on first call, uses cache within 60 seconds, falls back to stale cache if the provider fails, throws 500 if no cache exists, calculates correct cross-rates (NGN→USD, EUR→GBP etc.)              |
+| `transactions.service.spec.ts` | Stores amount to 4 decimal places, rate to 6 decimal places, leaves `fromCurrency` and `rateUsed` null for FUND, defaults status to COMPLETED, supports FAILED and PENDING, returns results ordered by newest first |
+
+---
+
+### Notes
+
+- All external dependencies are mocked so no `.env` file or database connection is required
+- `FxService` tests mock `ConfigService`, so no need to set `FX_API_KEY`
+- You may see ERROR logs during FX tests - this is expected when testing failure scenarios
+- If you see `Cannot find module 'src/...'`, add this to your Jest config in `package.json`:
+
+```json
+"moduleNameMapper": {
+  "^src/(.*)$": "<rootDir>/$1"
+}
 ```
