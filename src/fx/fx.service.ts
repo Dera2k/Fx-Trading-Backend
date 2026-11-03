@@ -26,13 +26,16 @@ export class FxService {
     }
 
     const apiKey = this.configService.get<string>('FX_API_KEY');
+    const baseUrl = this.configService.get<string>('FX_API_URL');
 
     if (!apiKey) {
       throw new InternalServerErrorException('FX Api key is not configured');
     }
+    if (!baseUrl) {
+      throw new InternalServerErrorException('FX API base URL is not configured');
+    }
 
     try {
-      const baseUrl = process.env.FX_API_URL ?? 'https://v6.exchangerate-api.com/v6/58b2472e340d6400a9544953/latest/USD';
       const url = `${baseUrl}/${apiKey}/latest/USD`;
 
       const response = await firstValueFrom(this.httpService.get(url));
