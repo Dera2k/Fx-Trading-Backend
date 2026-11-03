@@ -1,0 +1,36 @@
+version: "3.9"
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: derapassword
+      POSTGRES_DB: fx_trading
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASS: derapassword
+      DB_NAME: fx_trading
+      JWT_SECRET: change-me-in-production
+      FX_API_KEY: ${FX_API_KEY}
+      FX_API_URL: ${FX_API_URL:-https://v6.exchangerate-api.com/v6}
+    depends_on:
+      db:
+        condition: service_healthy
+volumes:
+  pgdata:
