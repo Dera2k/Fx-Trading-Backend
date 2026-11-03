@@ -31,14 +31,10 @@ export class TradeDto {
   @IsEnum(Currency)
   fromCurrency!: Currency;
 
-
-  
   @ApiProperty({ enum: Currency, example: Currency.GBP })
   @IsEnum(Currency)
   @Validate(CurrenciesDifferent)
   toCurrency!: Currency;
-
-
 
   @ApiProperty({ example: 1000 })
   @Transform(({ value }) => Number(value))
@@ -47,8 +43,6 @@ export class TradeDto {
   @Min(0.0001)
   @Max(1_000_000)
   amount!: number;
-
-
 
   @ApiPropertyOptional({ example: 0.78 })
   @IsOptional()

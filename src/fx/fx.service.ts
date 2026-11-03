@@ -1,4 +1,8 @@
-import {  Injectable, InternalServerErrorException, Logger,} from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { Currency } from '../common/enums/currency.enum';
@@ -10,13 +14,19 @@ const CACHE_TTL_MS = 60_000; //60 seconds
 @Injectable()
 export class FxService {
   private readonly logger = new Logger(FxService.name);
-  private cache: { rates: Record<string, number>; fetchedAt: number } | null = null;
+  private cache: { rates: Record<string, number>; fetchedAt: number } | null =
+    null;
 
   constructor(
     private readonly httpService: HttpService,
-  private readonly configService: ConfigService,) {}
+    private readonly configService: ConfigService,
+  ) {}
 
-  async getRates(): Promise<{ base: Currency; rates: Record<string, number>; fetchedAt: string }> {
+  async getRates(): Promise<{
+    base: Currency;
+    rates: Record<string, number>;
+    fetchedAt: string;
+  }> {
     if (this.cache && Date.now() - this.cache.fetchedAt < CACHE_TTL_MS) {
       return {
         base: Currency.USD,
@@ -32,7 +42,9 @@ export class FxService {
       throw new InternalServerErrorException('FX Api key is not configured');
     }
     if (!baseUrl) {
-      throw new InternalServerErrorException('FX API base URL is not configured');
+      throw new InternalServerErrorException(
+        'FX API base URL is not configured',
+      );
     }
 
     try {

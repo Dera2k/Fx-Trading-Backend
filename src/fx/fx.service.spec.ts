@@ -25,8 +25,8 @@ describe('FxService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FxService,
-        { provide: HttpService,    useValue: mockHttpService },
-        { provide: ConfigService,  useValue: mockConfigService },
+        { provide: HttpService, useValue: mockHttpService },
+        { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 
@@ -36,12 +36,16 @@ describe('FxService', () => {
     (service as any).cache = null;
   });
 
-  //getRates 
+  //getRates
 
   describe('getRates', () => {
     it('fetches rates from provider on first call', async () => {
       mockHttpService.get.mockReturnValue(
-        of({ data: { conversion_rates: { EUR: 0.8706, NGN: 1364.24, GBP: 0.7517 } } }),
+        of({
+          data: {
+            conversion_rates: { EUR: 0.8706, NGN: 1364.24, GBP: 0.7517 },
+          },
+        }),
       );
 
       const result = await service.getRates();
@@ -63,7 +67,6 @@ describe('FxService', () => {
     });
 
     it('returns stale cache when provider fails', async () => {
-      
       //prime the cache first
       mockHttpService.get.mockReturnValue(
         of({ data: { conversion_rates: { EUR: 0.8706 } } }),
@@ -74,23 +77,26 @@ describe('FxService', () => {
       (service as any).cache.fetchedAt = Date.now() - 120_000;
 
       //provider now fails
-      mockHttpService.get.mockReturnValue(throwError(() => new Error('Network error')));
+      mockHttpService.get.mockReturnValue(
+        throwError(() => new Error('Network error')),
+      );
 
       const result = await service.getRates();
       expect(result.rates.EUR).toBe(0.8706); // stale cache returned
     });
 
     it('throws InternalServerErrorException when provider fails and no cache exists', async () => {
-      mockHttpService.get.mockReturnValue(throwError(() => new Error('Network error')));
+      mockHttpService.get.mockReturnValue(
+        throwError(() => new Error('Network error')),
+      );
 
-      await expect(service.getRates()).rejects.toThrow(InternalServerErrorException);
+      await expect(service.getRates()).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 
-
-
-
-  //getRate 
+  //getRate
   describe('getRate', () => {
     beforeEach(() => {
       mockHttpService.get.mockReturnValue(

@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { UsersService } from '../users/users.service';
@@ -26,10 +30,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     // Unverified users cannot access protected routes
     if (!user.isVerified) {
-      throw new ForbiddenException('Please verify your email before continuing');
+      throw new ForbiddenException(
+        'Please verify your email before continuing',
+      );
     }
 
     // attached as request.user
-    return user; 
+    return user;
   }
 }

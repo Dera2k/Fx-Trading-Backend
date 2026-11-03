@@ -7,13 +7,16 @@ import { TransactionType } from '../common/enums/transaction-type.enum';
 import { TransactionStatus } from '../common/enums/transaction-status.enum';
 
 const mockTxRepo = {
-  find:   jest.fn(),
+  find: jest.fn(),
   create: jest.fn(),
-  save:   jest.fn(),
+  save: jest.fn(),
 };
 
-
-
+// TypeORM's EntityManager.create(Entity, partial) is called with two args:
+// (the entity constructor, the partial object). Mirror that in the assertions.
+function txCreateMatcher(expected: Record<string, unknown>) {
+  return [expect.objectContaining(expected)];
+}
 
 describe('TransactionsService', () => {
   let service: TransactionsService;
@@ -30,7 +33,7 @@ describe('TransactionsService', () => {
     jest.clearAllMocks();
   });
 
-  //record 
+  //record
 
   describe('record', () => {
     it('stores amount with 4 decimal places', async () => {
@@ -38,14 +41,14 @@ describe('TransactionsService', () => {
       mockTxRepo.save.mockResolvedValue({});
 
       await service.record({
-        userId:     'u1',
-        type:       TransactionType.FUND,
+        userId: 'u1',
+        type: TransactionType.FUND,
         toCurrency: Currency.NGN,
-        amount:     5000,
+        amount: 5000,
       });
 
       expect(mockTxRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ amount: '5000.0000' }),
+        ...txCreateMatcher({ amount: '5000.0000' }),
       );
     });
 
@@ -54,16 +57,16 @@ describe('TransactionsService', () => {
       mockTxRepo.save.mockResolvedValue({});
 
       await service.record({
-        userId:       'u1',
-        type:         TransactionType.CONVERT,
+        userId: 'u1',
+        type: TransactionType.CONVERT,
         fromCurrency: Currency.NGN,
-        toCurrency:   Currency.USD,
-        amount:       1000,
-        rateUsed:     0.000624,
+        toCurrency: Currency.USD,
+        amount: 1000,
+        rateUsed: 0.000624,
       });
 
       expect(mockTxRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ rateUsed: '0.000624' }),
+        ...txCreateMatcher({ rateUsed: '0.000624' }),
       );
     });
 
@@ -72,14 +75,14 @@ describe('TransactionsService', () => {
       mockTxRepo.save.mockResolvedValue({});
 
       await service.record({
-        userId:     'u1',
-        type:       TransactionType.FUND,
+        userId: 'u1',
+        type: TransactionType.FUND,
         toCurrency: Currency.NGN,
-        amount:     5000,
+        amount: 5000,
       });
 
       expect(mockTxRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ rateUsed: null }),
+        ...txCreateMatcher({ rateUsed: null }),
       );
     });
 
@@ -88,14 +91,14 @@ describe('TransactionsService', () => {
       mockTxRepo.save.mockResolvedValue({});
 
       await service.record({
-        userId:     'u1',
-        type:       TransactionType.FUND,
+        userId: 'u1',
+        type: TransactionType.FUND,
         toCurrency: Currency.NGN,
-        amount:     5000,
+        amount: 5000,
       });
 
       expect(mockTxRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ fromCurrency: null }),
+        ...txCreateMatcher({ fromCurrency: null }),
       );
     });
 
@@ -104,14 +107,14 @@ describe('TransactionsService', () => {
       mockTxRepo.save.mockResolvedValue({});
 
       await service.record({
-        userId:     'u1',
-        type:       TransactionType.TRADE,
+        userId: 'u1',
+        type: TransactionType.TRADE,
         toCurrency: Currency.USD,
-        amount:     100,
+        amount: 100,
       });
 
       expect(mockTxRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ status: TransactionStatus.COMPLETED }),
+        ...txCreateMatcher({ status: TransactionStatus.COMPLETED }),
       );
     });
 
@@ -120,15 +123,15 @@ describe('TransactionsService', () => {
       mockTxRepo.save.mockResolvedValue({});
 
       await service.record({
-        userId:     'u1',
-        type:       TransactionType.TRADE,
+        userId: 'u1',
+        type: TransactionType.TRADE,
         toCurrency: Currency.USD,
-        amount:     100,
-        status:     TransactionStatus.FAILED,
+        amount: 100,
+        status: TransactionStatus.FAILED,
       });
 
       expect(mockTxRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ status: TransactionStatus.FAILED }),
+        ...txCreateMatcher({ status: TransactionStatus.FAILED }),
       );
     });
 
@@ -137,20 +140,20 @@ describe('TransactionsService', () => {
       mockTxRepo.save.mockResolvedValue({});
 
       await service.record({
-        userId:     'u1',
-        type:       TransactionType.TRADE,
+        userId: 'u1',
+        type: TransactionType.TRADE,
         toCurrency: Currency.USD,
-        amount:     100,
-        status:     TransactionStatus.PENDING,
+        amount: 100,
+        status: TransactionStatus.PENDING,
       });
 
       expect(mockTxRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ status: TransactionStatus.PENDING }),
+        ...txCreateMatcher({ status: TransactionStatus.PENDING }),
       );
     });
   });
 
-  //find All For User 
+  //find All For User
 
   describe('findAllForUser', () => {
     it('queries by userId and orders by createdAt DESC', async () => {
@@ -171,8 +174,18 @@ describe('TransactionsService', () => {
 
     it('returns transactions when they exist', async () => {
       const txs = [
-        { id: 'tx1', userId: 'u1', type: TransactionType.FUND, amount: '5000.0000' },
-        { id: 'tx2', userId: 'u1', type: TransactionType.TRADE, amount: '1000.0000' },
+        {
+          id: 'tx1',
+          userId: 'u1',
+          type: TransactionType.FUND,
+          amount: '5000.0000',
+        },
+        {
+          id: 'tx2',
+          userId: 'u1',
+          type: TransactionType.TRADE,
+          amount: '1000.0000',
+        },
       ];
       mockTxRepo.find.mockResolvedValue(txs);
       const result = await service.findAllForUser('u1');

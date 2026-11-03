@@ -41,7 +41,11 @@ export class Transaction {
   @Column({ type: 'decimal', precision: 18, scale: 4, nullable: true })
   fee!: string | null;
 
-  @Column({ type: 'enum', enum: TransactionStatus, default: TransactionStatus.PENDING })
+  @Column({
+    type: 'enum',
+    enum: TransactionStatus,
+    default: TransactionStatus.PENDING,
+  })
   status!: TransactionStatus;
 
   @Column({ type: 'text', nullable: true })

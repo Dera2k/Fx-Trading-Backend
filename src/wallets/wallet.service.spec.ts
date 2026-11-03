@@ -12,9 +12,9 @@ import { TransactionStatus } from '../common/enums/transaction-status.enum';
 
 const mockWalletRepo = {
   findOne: jest.fn(),
-  find:    jest.fn(),
-  save:    jest.fn(),
-  create:  jest.fn(),
+  find: jest.fn(),
+  save: jest.fn(),
+  create: jest.fn(),
 };
 
 const mockFxService = {
@@ -23,12 +23,13 @@ const mockFxService = {
 
 const mockTransactionsService = {
   record: jest.fn(),
+  recordInTransaction: jest.fn(),
 };
 
 const mockQueryRunner = {
   findOne: jest.fn(),
-  save:    jest.fn(),
-  create:  jest.fn(),
+  save: jest.fn(),
+  create: jest.fn(),
 };
 
 const mockDataSource = {
@@ -43,9 +44,9 @@ describe('WalletService', () => {
       providers: [
         WalletService,
         { provide: getRepositoryToken(Wallet), useValue: mockWalletRepo },
-        { provide: FxService,                  useValue: mockFxService },
-        { provide: TransactionsService,        useValue: mockTransactionsService },
-        { provide: DataSource,                 useValue: mockDataSource },
+        { provide: FxService, useValue: mockFxService },
+        { provide: TransactionsService, useValue: mockTransactionsService },
+        { provide: DataSource, useValue: mockDataSource },
       ],
     }).compile();
 
@@ -53,42 +54,66 @@ describe('WalletService', () => {
     jest.clearAllMocks();
   });
 
-  //fund 
+  //fund
 
   describe('fund', () => {
     it('credits an existing wallet and records a FUND transaction', async () => {
-      const wallet = { id: '1', userId: 'u1', currency: Currency.NGN, balance: '5000.0000' };
+      const wallet = {
+        id: '1',
+        userId: 'u1',
+        currency: Currency.NGN,
+        balance: '5000.0000',
+      };
       mockWalletRepo.findOne.mockResolvedValue(wallet);
-      mockWalletRepo.save.mockResolvedValue({ ...wallet, balance: '10000.0000' });
+      mockWalletRepo.save.mockResolvedValue({
+        ...wallet,
+        balance: '10000.0000',
+      });
       mockTransactionsService.record.mockResolvedValue({});
 
-      const result = await service.fund('u1', { currency: Currency.NGN, amount: 5000 });
+      const result = await service.fund('u1', {
+        currency: Currency.NGN,
+        amount: 5000,
+      });
 
       expect(result.balance).toBe('10000.0000');
       expect(mockTransactionsService.record).toHaveBeenCalledWith(
         expect.objectContaining({
-          type:       TransactionType.FUND,
+          type: TransactionType.FUND,
           toCurrency: Currency.NGN,
-          amount:     5000,
-          status:     TransactionStatus.COMPLETED,
+          amount: 5000,
+          status: TransactionStatus.COMPLETED,
         }),
       );
     });
 
     it('creates a new wallet when none exists then funds it', async () => {
       mockWalletRepo.findOne.mockResolvedValue(null);
-      mockWalletRepo.create.mockReturnValue({ userId: 'u1', currency: Currency.USD, balance: '0.0000' });
+      mockWalletRepo.create.mockReturnValue({
+        userId: 'u1',
+        currency: Currency.USD,
+        balance: '0.0000',
+      });
       mockWalletRepo.save
-        .mockResolvedValueOnce({ userId: 'u1', currency: Currency.USD, balance: '0.0000' })
-        .mockResolvedValueOnce({ userId: 'u1', currency: Currency.USD, balance: '200.0000' });
+        .mockResolvedValueOnce({
+          userId: 'u1',
+          currency: Currency.USD,
+          balance: '0.0000',
+        })
+        .mockResolvedValueOnce({
+          userId: 'u1',
+          currency: Currency.USD,
+          balance: '200.0000',
+        });
       mockTransactionsService.record.mockResolvedValue({});
 
-      const result = await service.fund('u1', { currency: Currency.USD, amount: 200 });
+      const result = await service.fund('u1', {
+        currency: Currency.USD,
+        amount: 200,
+      });
       expect(result.balance).toBe('200.0000');
     });
   });
-
-
 
   //has Sufficient Balance testin
 
@@ -124,29 +149,44 @@ describe('WalletService', () => {
       await expect(
         service.convert('u1', {
           fromCurrency: Currency.NGN,
-          toCurrency:   Currency.USD,
-          amount:       1000,
+          toCurrency: Currency.USD,
+          amount: 1000,
         }),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('throws BadRequestException when balance is insufficient', async () => {
-      const fromWallet = { id: '1', userId: 'u1', currency: Currency.NGN, balance: '100.0000' };
+      const fromWallet = {
+        id: '1',
+        userId: 'u1',
+        currency: Currency.NGN,
+        balance: '100.0000',
+      };
       mockQueryRunner.findOne.mockResolvedValue(fromWallet);
       mockFxService.getRate.mockResolvedValue(0.00062);
 
       await expect(
         service.convert('u1', {
           fromCurrency: Currency.NGN,
-          toCurrency:   Currency.USD,
-          amount:       1000,
+          toCurrency: Currency.USD,
+          amount: 1000,
         }),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('records a CONVERT transaction after successful conversion', async () => {
-      const fromWallet = { id: '1', userId: 'u1', currency: Currency.NGN, balance: '5000.0000' };
-      const toWallet   = { id: '2', userId: 'u1', currency: Currency.USD, balance: '0.0000' };
+      const fromWallet = {
+        id: '1',
+        userId: 'u1',
+        currency: Currency.NGN,
+        balance: '5000.0000',
+      };
+      const toWallet = {
+        id: '2',
+        userId: 'u1',
+        currency: Currency.USD,
+        balance: '0.0000',
+      };
 
       mockFxService.getRate.mockResolvedValue(0.00062);
       mockQueryRunner.findOne
@@ -157,16 +197,17 @@ describe('WalletService', () => {
 
       await service.convert('u1', {
         fromCurrency: Currency.NGN,
-        toCurrency:   Currency.USD,
-        amount:       1000,
+        toCurrency: Currency.USD,
+        amount: 1000,
       });
 
-      expect(mockTransactionsService.record).toHaveBeenCalledWith(
+      expect(mockTransactionsService.recordInTransaction).toHaveBeenCalledWith(
+        expect.anything(),
         expect.objectContaining({
-          type:         TransactionType.CONVERT,
+          type: TransactionType.CONVERT,
           fromCurrency: Currency.NGN,
-          toCurrency:   Currency.USD,
-          rateUsed:     0.00062,
+          toCurrency: Currency.USD,
+          rateUsed: 0.00062,
         }),
       );
     });
@@ -176,21 +217,31 @@ describe('WalletService', () => {
 
   describe('trade', () => {
     it('rejects when live rate is below limitRate', async () => {
-      mockFxService.getRate.mockResolvedValue(0.00050);
+      mockFxService.getRate.mockResolvedValue(0.0005);
 
       await expect(
         service.trade('u1', {
           fromCurrency: Currency.NGN,
-          toCurrency:   Currency.USD,
-          amount:       1000,
-          limitRate:    0.00062,
+          toCurrency: Currency.USD,
+          amount: 1000,
+          limitRate: 0.00062,
         }),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('executes trade and records TRADE transaction when rate is acceptable', async () => {
-      const fromWallet = { id: '1', userId: 'u1', currency: Currency.NGN, balance: '5000.0000' };
-      const toWallet   = { id: '2', userId: 'u1', currency: Currency.USD, balance: '0.0000' };
+      const fromWallet = {
+        id: '1',
+        userId: 'u1',
+        currency: Currency.NGN,
+        balance: '5000.0000',
+      };
+      const toWallet = {
+        id: '2',
+        userId: 'u1',
+        currency: Currency.USD,
+        balance: '0.0000',
+      };
 
       mockFxService.getRate.mockResolvedValue(0.00062);
       mockQueryRunner.findOne
@@ -201,11 +252,12 @@ describe('WalletService', () => {
 
       await service.trade('u1', {
         fromCurrency: Currency.NGN,
-        toCurrency:   Currency.USD,
-        amount:       1000,
+        toCurrency: Currency.USD,
+        amount: 1000,
       });
 
-      expect(mockTransactionsService.record).toHaveBeenCalledWith(
+      expect(mockTransactionsService.recordInTransaction).toHaveBeenCalledWith(
+        expect.anything(),
         expect.objectContaining({ type: TransactionType.TRADE }),
       );
     });

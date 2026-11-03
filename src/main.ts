@@ -3,7 +3,7 @@ dotenv.config();
 
 import 'reflect-metadata';
 import { NestFactory, Reflector } from '@nestjs/core';
-import {ValidationPipe, ClassSerializerInterceptor, } from '@nestjs/common';
+import { ValidationPipe, ClassSerializerInterceptor } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
@@ -21,7 +21,7 @@ async function bootstrap() {
   // });
 
   /**
-   * GLobal Validation */ 
+   * GLobal Validation */
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -38,7 +38,9 @@ async function bootstrap() {
    */
   const config = new DocumentBuilder()
     .setTitle('FX Trading API')
-    .setDescription('Multi-currency FX trading backend — register, fund, convert, trade')
+    .setDescription(
+      'Multi-currency FX trading backend — register, fund, convert, trade',
+    )
     .setVersion('1.0')
     .addBearerAuth(
       { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
@@ -46,10 +48,9 @@ async function bootstrap() {
     )
     .build();
 
-
-    /**
-     * Swagger build and mount
-     */
+  /**
+   * Swagger build and mount
+   */
   SwaggerModule.setup(
     'api/docs',
     app,

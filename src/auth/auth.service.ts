@@ -30,59 +30,85 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const user = await this.usersService.create(dto.email, passwordHash);
 
-    const code      = Math.floor(100_000 + Math.random() * 900_000).toString();
+    const code = Math.floor(100_000 + Math.random() * 900_000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1_000); // 10 min
-    await this.otpRepo.save(this.otpRepo.create({ userId: user.id, code, expiresAt }));
+    await this.otpRepo.save(
+      this.otpRepo.create({ userId: user.id, code, expiresAt }),
+    );
 
     // TODO: inject MailService and send `code` to dto.email
     // Development: query DB → SELECT code FROM otps ORDER BY created_at DESC LIMIT 1;
     console.log(`[DEV ONLY] OTP for ${dto.email}: ${code}`);
 
-    return { message: 'Registration successful. Check your email for your OTP.' };
+    return {
+      message: 'Registration successful. Check your email for your OTP.',
+    };
   }
-
-
-
 
   async verifyOtp(dto: VerifyOtpDto) {
     const user = await this.usersService.findByEmail(dto.email);
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
     if (user.isVerified) {
-      throw new BadRequestException('Account is already verified. Please log in.');
+      throw new BadRequestException(
+        'Account is already verified. Please log in.',
+      );
     }
 
+    // fetch the latest unused OTP for this user (ignoring the code so we can
+    // track failed attempts against it)
     const otp = await this.otpRepo.findOne({
-      where: { userId: user.id, code: dto.code, isUsed: false },
+      where: { userId: user.id, isUsed: false },
+      order: { createdAt: 'DESC' },
     });
 
     if (!otp || otp.expiresAt < new Date()) {
       throw new BadRequestException('Invalid or expired OTP');
     }
 
+    const MAX_ATTEMPTS = 5;
+
+    if (otp.code !== dto.code) {
+      const attempts = otp.attempts + 1;
+      if (attempts >= MAX_ATTEMPTS) {
+        // lock the code after too many bad attempts
+        await this.otpRepo.update(otp.id, { isUsed: true, attempts });
+        throw new BadRequestException(
+          'Too many failed attempts. Request a new OTP.',
+        );
+      }
+      await this.otpRepo.update(otp.id, { attempts });
+      throw new BadRequestException('Invalid OTP code');
+    }
+
     await this.otpRepo.update(otp.id, { isUsed: true });
     await this.usersService.markVerified(user.id);
 
-    const accessToken = this.jwtService.sign({ sub: user.id, email: user.email });
+    const accessToken = this.jwtService.sign({
+      sub: user.id,
+      email: user.email,
+    });
     return { accessToken };
   }
 
-
-
-
-  
   async login(dto: LoginDto) {
     const user = await this.usersService.findByEmail(dto.email);
     if (!user) throw new UnauthorizedException('Invalid email or password');
 
     const passwordMatch = await bcrypt.compare(dto.password, user.passwordHash);
-    if (!passwordMatch) throw new UnauthorizedException('Invalid email or password');
+    if (!passwordMatch)
+      throw new UnauthorizedException('Invalid email or password');
 
     if (!user.isVerified) {
-      throw new ForbiddenException('Please verify your email before logging in');
+      throw new ForbiddenException(
+        'Please verify your email before logging in',
+      );
     }
 
-    const accessToken = this.jwtService.sign({ sub: user.id, email: user.email });
+    const accessToken = this.jwtService.sign({
+      sub: user.id,
+      email: user.email,
+    });
     return { accessToken };
   }
 }

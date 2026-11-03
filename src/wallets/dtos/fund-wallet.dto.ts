@@ -23,13 +23,16 @@ export class FundWalletDto {
   currency!: Currency;
 
   @ApiProperty({
-    example: 500.00,
+    example: 500.0,
     description: 'Amount to fund — must be positive, max 4 decimal places',
     minimum: 0.0001,
     maximum: 1000000,
   })
   @IsNotEmpty({ message: 'Amount is required' })
-  @IsNumber({ maxDecimalPlaces: 4 }, { message: 'Amount must be a number with at most 4 decimal places' })
+  @IsNumber(
+    { maxDecimalPlaces: 4 },
+    { message: 'Amount must be a number with at most 4 decimal places' },
+  )
   @IsPositive({ message: 'Amount must be greater than zero' })
   @Min(0.0001, { message: 'Minimum fundable amount is 0.0001' })
   @Max(1_000_000, { message: 'Maximum single fund amount is 1,000,000' })

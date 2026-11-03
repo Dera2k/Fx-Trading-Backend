@@ -81,7 +81,7 @@ describe('FX Trading App (e2e)', () => {
     });
   });
 
-  //protected routes no token 
+  //protected routes no token
 
   describe('Protected routes — no token', () => {
     it('GET /wallet returns 401', () => {

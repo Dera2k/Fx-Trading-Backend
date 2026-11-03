@@ -10,7 +10,6 @@ import { FundWalletDto } from './dtos/fund-wallet.dto';
 import { ConvertCurrencyDto } from './dtos/convert-currency.dto';
 import { TradeDto } from './dtos/trade.dto';
 
-
 @ApiTags('Wallet')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
@@ -31,7 +30,9 @@ export class WalletController {
   }
 
   @Post('convert')
-  @ApiOperation({ summary: 'Convert between currencies within the same account' })
+  @ApiOperation({
+    summary: 'Convert between currencies within the same account',
+  })
   convert(@CurrentUser() user: User, @Body() dto: ConvertCurrencyDto) {
     return this.walletService.convert(user.id, dto);
   }

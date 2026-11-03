@@ -7,11 +7,7 @@ import { FxModule } from '../fx/fx.module';
 import { TransactionsModule } from '../transactions/transactions.module';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Wallet]),
-    FxModule,
-    TransactionsModule,
-  ],
+  imports: [TypeOrmModule.forFeature([Wallet]), FxModule, TransactionsModule],
   controllers: [WalletController],
   providers: [WalletService],
   exports: [WalletService],
